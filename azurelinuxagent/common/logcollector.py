@@ -53,9 +53,10 @@ class LogCollector(object):
 
     _TRUNCATED_FILE_PREFIX = "truncated_"
 
-    def __init__(self, manifest_file_path):
+    def __init__(self, manifest_file_path, archive_path=None):
         self.manifest_file_path = manifest_file_path
         self.must_collect_files = self._expand_must_collect_files()
+        self.archive_path = archive_path if archive_path else COMPRESSED_ARCHIVE_PATH
 
     @staticmethod
     def run_shell_command(command, stdout=subprocess.PIPE, output=False):
@@ -282,21 +283,21 @@ class LogCollector(object):
             files_to_collect = self._create_list_of_files_to_collect()
             self._log_to_results_file("\n### Creating compressed archive ###")
 
-            with zipfile.ZipFile(COMPRESSED_ARCHIVE_PATH, "w", compression=zipfile.ZIP_DEFLATED) as compressed_archive:
+            with zipfile.ZipFile(self.archive_path, "w", compression=zipfile.ZIP_DEFLATED) as compressed_archive:
                 for file in files_to_collect:
                     archive_file_name = LogCollector._convert_file_name_to_archive_name(file)
                     compressed_archive.write(file, arcname=archive_file_name)
 
-                compressed_archive_size = os.path.getsize(COMPRESSED_ARCHIVE_PATH)
+                compressed_archive_size = os.path.getsize(self.archive_path)
                 self._log_to_results_file("Successfully compressed files. "
                                           "Compressed archive size is {0}b".format(compressed_archive_size))
                 compressed_archive.write(_OUTPUT_RESULTS_FILE_PATH, arcname="results.txt")
 
-            return True
+            return self.archive_path
         except Exception as e:
             msg = "Failed to collect logs: {0}".format(ustr(e))
             self._log_to_results_file(msg)
 
-            return False
+            raise
         finally:
             self._remove_uncollected_truncated_files(files_to_collect)

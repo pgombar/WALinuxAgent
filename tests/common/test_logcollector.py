@@ -17,7 +17,6 @@
 # Requires Python 2.6+ and Openssl 1.0+
 #
 
-from datetime import datetime, timedelta
 import os
 import shutil
 import zipfile

@@ -39,6 +39,7 @@ URI_FORMAT_PUT_LOG = "http://{0}:{1}/vmAgentLog"
 URI_FORMAT_HEALTH = "http://{0}:{1}/health"
 API_VERSION = "2015-09-01"
 HEADER_CONTAINER_ID = "x-ms-containerid"
+HEADER_DEPLOYMENT_ID = "x-ms-vmagentlog-deploymentid"
 HEADER_VERSION = "x-ms-version"
 HEADER_HOST_CONFIG_NAME = "x-ms-host-config-name"
 HEADER_ARTIFACT_LOCATION = "x-ms-artifact-location"
@@ -201,8 +202,27 @@ class HostPluginProtocol(object):
 
         return datetime.datetime.utcnow() >= (last_timestamp + period)
 
-    def put_vm_log(self, content):
-        raise NotImplementedError("Unimplemented")
+    def put_vm_logs(self, content):
+        """
+        Try to upload VM logs, a compressed zip file, via the host plugin /vmAgentLog channel.
+        :param content: The zip file
+        """
+        if not self.ensure_initialized():
+            raise ProtocolError("HostGAPlugin: HostGAPlugin is not available")
+
+        url = URI_FORMAT_PUT_LOG.format(self.endpoint, HOST_PLUGIN_PORT)
+        response = restutil.http_put(url,
+                                     data=content,
+                                     headers=self._build_log_headers())
+
+        if restutil.request_failed(response):
+            error_response = restutil.read_response_error(response)
+            is_healthy = not restutil.request_failed_at_hostplugin(response)
+            self.report_status_health(is_healthy=is_healthy, response=error_response)
+            raise HttpError("HostGAPlugin: Put VM log failed: {0}".format(error_response))
+        else:
+            self.report_status_health(is_healthy=True)
+            logger.info("HostGAPlugin: Put VM log succeeded")
 
     def put_vm_status(self, status_blob, sas_url, config_blob_type=None):
         """
@@ -326,6 +346,16 @@ class HostPluginProtocol(object):
             "Content-type": "application/json",
             HEADER_CONTAINER_ID: self.container_id,
             HEADER_HOST_CONFIG_NAME: self.role_config_name
+        }
+
+    def _build_log_headers(self):
+        # Role config name consists of: <deployment id>.<incarnation>(...)
+        deployment_id = self.role_config_name.split(".")[0]
+        return {
+            HEADER_VERSION: API_VERSION,
+            # "Content-type": "binary",  # TODO: figure this out
+            HEADER_CONTAINER_ID: self.container_id,
+            HEADER_DEPLOYMENT_ID: deployment_id
         }
     
     def _base64_encode(self, data):

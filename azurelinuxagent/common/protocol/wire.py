@@ -191,6 +191,9 @@ class WireProtocol(DataContract):
         validate_param(EVENTS_DIRECTORY, events, TelemetryEventList)
         self.client.report_event(events)
 
+    def upload_logs(self, logs):
+        self.client.upload_logs(logs)
+
 
 def _build_role_properties(container_id, role_instance_id, thumbprint):
     xml = (u"<?xml version=\"1.0\" encoding=\"utf-8\"?>"
@@ -1201,6 +1204,20 @@ class WireClient(object):
                                  log_event=False)
 
         return artifacts_profile
+
+    def upload_logs(self, logs):
+        try:
+            host = self.get_host_plugin()
+            host.put_vm_logs(logs)
+            return
+        except ResourceGoneError:
+            # refresh the host plugin client and try again on the next iteration of the main loop
+            self.update_host_plugin_from_goal_state()
+            return
+        except Exception as e:
+            # for all other errors, fall back to direct
+            msg = "Falling back to direct upload: {0}".format(ustr(e))
+            self.report_status_event(msg, is_success=True)
 
 
 class VersionInfo(object):
