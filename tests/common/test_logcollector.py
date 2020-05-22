@@ -50,22 +50,21 @@ class TestLogCollector(AgentTestCase):
         cls.log_collector_dir = os.path.join(cls.tmp_dir, "logcollector")
         cls.mock_log_collector_dir = patch("azurelinuxagent.common.logcollector._LOG_COLLECTOR_DIR",
                                            cls.log_collector_dir)
+        cls.mock_log_collector_dir.start()
 
         cls.truncated_files_dir = os.path.join(cls.tmp_dir, "truncated")
         cls.mock_truncated_files_dir = patch("azurelinuxagent.common.logcollector._TRUNCATED_FILES_DIR",
                                              cls.truncated_files_dir)
+        cls.mock_truncated_files_dir.start()
 
         cls.output_results_file_path = os.path.join(cls.log_collector_dir, "results.txt")
         cls.mock_output_results_file_path = patch("azurelinuxagent.common.logcollector._OUTPUT_RESULTS_FILE_PATH",
                                                   cls.output_results_file_path)
+        cls.mock_output_results_file_path.start()
 
         cls.compressed_archive_path = os.path.join(cls.log_collector_dir, "logs.zip")
-        cls.mock_compressed_archive_path = patch("azurelinuxagent.common.logcollector.COMPRESSED_ARCHIVE_PATH",
+        cls.mock_compressed_archive_path = patch("azurelinuxagent.common.logcollector._COMPRESSED_ARCHIVE_PATH",
                                                  cls.compressed_archive_path)
-
-        cls.mock_log_collector_dir.start()
-        cls.mock_truncated_files_dir.start()
-        cls.mock_output_results_file_path.start()
         cls.mock_compressed_archive_path.start()
 
     @classmethod
@@ -201,11 +200,11 @@ diskinfo,""".format(folder_to_list, file_to_collect)
             results = fh.readlines()
 
         # Assert echo was parsed
-        self.assertEquals("### Test header ###\n", results[0])
+        self.assertTrue(any([line.endswith("### Test header ###\n") for line in results]))
         # Assert unknown command was reported
-        self.assertEquals("Error: couldn\'t parse \"unknown command\"\n", results[1])
+        self.assertTrue(any([line.endswith("ERROR Couldn\'t parse \"unknown command\"\n") for line in results]))
         # Assert ll was parsed
-        self.assertTrue("ls -alF {0}".format(folder_to_list) in results[2])
+        self.assertTrue(any(["ls -alF {0}".format(folder_to_list) in line for line in results]))
         # Assert copy was parsed
         self._assert_archive_created(archive)
         self._assert_files_are_in_archive(expected_files=[file_to_collect])
