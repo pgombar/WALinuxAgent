@@ -121,3 +121,19 @@ class LogUploadHandler(object):
 
         self.protocol.put_vm_logs()
 
+    def _invoke_command_with_limits(self, command):
+        # README: https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/resource_
+        # management_guide/sec-modifying_control_groups
+
+        # systemd-run --scope --unit=bla
+        # --property=CPUAccounting=1 --property=CPUQuota=20%
+        # --property=MemoryAccounting=1 --property=MemoryLimit=100M
+        # echo 42
+        # CPUQuota available since systemd 213: https://github.com/systemd/systemd/blob/master/NEWS
+
+        # Persistent unit for reporting resource usage? Or existing track cgroups?
+
+        # cat cpuhog.sh
+        # #!/usr/bin/env bash
+        # dd if=/dev/zero of=/dev/null
+        pass
