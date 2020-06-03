@@ -354,7 +354,7 @@ class LogCollector(object):
                 _LOGGER.info("Successfully compressed files. "
                              "Compressed archive size is {0}b".format(compressed_archive_size))
 
-                self.archive_path.write(_OUTPUT_RESULTS_FILE_PATH, arcname="results.txt")
+                compressed_archive.write(_OUTPUT_RESULTS_FILE_PATH, arcname="results.txt")
 
             return self.archive_path
         except Exception as e:
