@@ -1174,7 +1174,7 @@ class WireClient(object): # pylint: disable=R0904
         if self._host_plugin is None:
             raise ProtocolError("Trying to get property of Host Plugin channel before initialization!")
 
-        return self._host_plugin.is_default_channel()
+        return self._host_plugin.get_default_channel()
 
     def set_host_plugin_default_channel(self, is_default):
         if self._host_plugin is None:

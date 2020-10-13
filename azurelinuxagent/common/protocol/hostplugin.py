@@ -84,7 +84,7 @@ class HostPluginProtocol(object): # pylint: disable=R0902
         # Role config name consists of: <deployment id>.<incarnation>(...)
         return role_config_name.split(".")[0] if role_config_name is not None else None
 
-    def is_default_channel(self):
+    def get_default_channel(self):
         return self.is_default_channel
 
     def set_default_channel(self, is_default):

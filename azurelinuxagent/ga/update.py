@@ -947,11 +947,11 @@ class GuestAgent(object):
         uris_shuffled = self.pkg.uris
         random.shuffle(uris_shuffled)
         for uri in uris_shuffled:
-            if (self.host is not None and not self.host.is_default_channel()) and self._fetch(uri.uri): # pylint: disable=R1723
+            if (self.host is not None and not self.host.get_default_channel()) and self._fetch(uri.uri): # pylint: disable=R1723
                 break
 
             elif self.host is not None and self.host.ensure_initialized():
-                if not self.host.is_default_channel():
+                if not self.host.get_default_channel():
                     logger.warn("Download failed, switching to host plugin")
                 else:
                     logger.verbose("Using host plugin as default channel")
@@ -959,7 +959,7 @@ class GuestAgent(object):
                 uri, headers = self.host.get_artifact_request(uri.uri, self.host.manifest_uri)
                 try:
                     if self._fetch(uri, headers=headers, use_proxy=False): # pylint: disable=R1723
-                        if not self.host.is_default_channel():
+                        if not self.host.get_default_channel():
                             logger.verbose("Setting host plugin as default channel")
                             self.host.set_default_channel(True)
                         break
