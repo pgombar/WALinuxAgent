@@ -558,7 +558,7 @@ class UpdateHandler(object): # pylint: disable=R0902
 
     def _get_host_plugin(self, protocol):
         return protocol.client.get_host_plugin() if protocol and protocol.client else None
-    
+
     def _get_pid_parts(self):
         pid_file = conf.get_agent_pid_file_path()
         pid_dir = os.path.dirname(pid_file)
@@ -675,6 +675,11 @@ class UpdateHandler(object): # pylint: disable=R0902
         return
 
     def _upgrade_available(self, protocol, base_version=CURRENT_VERSION):
+        protocol.client.get_host_plugin()
+        # Host Plugin will be set as default channel if direct fails and Host Plugin succeeds. However, we favour
+        # direct channel first each time we invoke the upgrade scenario.
+        protocol.client.set_host_plugin_default_channel(False)
+
         # Ignore new agents if updating is disabled
         if not conf.get_autoupdate_enabled():
             return False
@@ -942,11 +947,11 @@ class GuestAgent(object):
         uris_shuffled = self.pkg.uris
         random.shuffle(uris_shuffled)
         for uri in uris_shuffled:
-            if not HostPluginProtocol.is_default_channel() and self._fetch(uri.uri): # pylint: disable=R1723
+            if (self.host is not None and not self.host.is_default_channel()) and self._fetch(uri.uri): # pylint: disable=R1723
                 break
 
             elif self.host is not None and self.host.ensure_initialized():
-                if not HostPluginProtocol.is_default_channel():
+                if not self.host.is_default_channel():
                     logger.warn("Download failed, switching to host plugin")
                 else:
                     logger.verbose("Using host plugin as default channel")
@@ -954,9 +959,9 @@ class GuestAgent(object):
                 uri, headers = self.host.get_artifact_request(uri.uri, self.host.manifest_uri)
                 try:
                     if self._fetch(uri, headers=headers, use_proxy=False): # pylint: disable=R1723
-                        if not HostPluginProtocol.is_default_channel():
+                        if not self.host.is_default_channel():
                             logger.verbose("Setting host plugin as default channel")
-                            HostPluginProtocol.set_default_channel(True)
+                            self.host.set_default_channel(True)
                         break
                     else:
                         logger.warn("Host plugin download failed")
@@ -964,7 +969,7 @@ class GuestAgent(object):
                 # If the HostPlugin rejects the request,
                 # let the error continue, but set to use the HostPlugin
                 except ResourceGoneError:
-                    HostPluginProtocol.set_default_channel(True)
+                    self.host.set_default_channel(True)
                     raise
 
             else:

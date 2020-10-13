@@ -279,6 +279,11 @@ class ExtHandlersHandler(object):
             # Log status report success on new config
             self.log_report = True
 
+            # We use Host Plugin if the direct channel fails when downloading extension zips and manifests.
+            # If the Host Plugin channel succeeds, we will mark it as the default channel. Before each loop, we
+            # make sure to reset the Host Plugin to secondary channel so we keep trying direct channel first each loop.
+            self.protocol.set_host_plugin_default_channel(False)
+
             if self._extension_processing_allowed():
                 self.handle_ext_handlers(etag)
                 self.last_etag = etag

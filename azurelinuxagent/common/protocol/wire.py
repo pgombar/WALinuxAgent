@@ -196,6 +196,9 @@ class WireProtocol(DataContract):
     def upload_logs(self, logs):
         self.client.upload_logs(logs)
 
+    def set_host_plugin_default_channel(self, is_default):
+        self.client.set_host_plugin_default_channel(is_default)
+
 
 def _build_role_properties(container_id, role_instance_id, thumbprint):
     xml = (u"<?xml version=\"1.0\" encoding=\"utf-8\"?>"
@@ -929,7 +932,7 @@ class WireClient(object): # pylint: disable=R0904
         # NOTE: direct_func and host_func are passed as lambdas. Be careful about capturing goal state data in them as
         # they will not be refreshed even if a goal state refresh is called before retrying the host_func.
 
-        if not HostPluginProtocol.is_default_channel():
+        if not self.is_host_plugin_default_channel():
             ret = None
             try:
                 ret = direct_func()
@@ -950,10 +953,9 @@ class WireClient(object): # pylint: disable=R0904
 
         ret = self._call_hostplugin_with_container_check(host_func)
 
-        if not HostPluginProtocol.is_default_channel():
-            logger.info("Setting host plugin as default channel from now on. "
-                        "Restart the agent to reset the default channel.")
-            HostPluginProtocol.set_default_channel(True)
+        if not self.is_host_plugin_default_channel():
+            logger.info("Setting host plugin as default channel until next iteration.")
+            self.set_host_plugin_default_channel(True)
 
         return ret
 
@@ -1167,6 +1169,18 @@ class WireClient(object): # pylint: disable=R0904
                                                      goal_state.container_id,
                                                      goal_state.role_config_name))
         return self._host_plugin
+
+    def is_host_plugin_default_channel(self):
+        if self._host_plugin is None:
+            raise ProtocolError("Trying to get property of Host Plugin channel before initialization!")
+
+        return self._host_plugin.is_default_channel()
+
+    def set_host_plugin_default_channel(self, is_default):
+        if self._host_plugin is None:
+            raise ProtocolError("Trying to set Host Plugin channel before initialization!")
+
+        self._host_plugin.set_default_channel(is_default)
 
     def has_artifacts_profile_blob(self):
         ext_conf = self.get_ext_conf()
