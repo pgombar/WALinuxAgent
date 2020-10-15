@@ -283,6 +283,7 @@ class ExtHandlersHandler(object):
             # If the Host Plugin channel succeeds, we will mark it as the default channel. Before each loop, we
             # make sure to reset the Host Plugin to secondary channel so we keep trying direct channel first each loop.
             self.protocol.set_host_plugin_default_channel(False)
+            logger.info("[PAULA] Setting HGAP default false - extension handling loop")
 
             if self._extension_processing_allowed():
                 self.handle_ext_handlers(etag)

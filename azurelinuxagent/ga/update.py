@@ -679,6 +679,7 @@ class UpdateHandler(object): # pylint: disable=R0902
         # Host Plugin will be set as default channel if direct fails and Host Plugin succeeds. However, we favour
         # direct channel first each time we invoke the upgrade scenario.
         protocol.client.set_host_plugin_default_channel(False)
+        logger.info("[PAULA] Setting HGAP default false - agent upgrade check")
 
         # Ignore new agents if updating is disabled
         if not conf.get_autoupdate_enabled():

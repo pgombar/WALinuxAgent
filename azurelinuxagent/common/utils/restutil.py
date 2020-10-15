@@ -317,7 +317,7 @@ def _http_request(method, host, rel_uri, port=None, data=None, secure=False, # p
         payload = "[REDACTED]"
 
     # Logger requires the data to be a ustr to log properly, ensuring that the data string that we log is always ustr.
-    logger.verbose("HTTP connection [{0}] [{1}] [{2}] [{3}]",
+    logger.info("[PAULA] HTTP connection [{0}] [{1}] [{2}] [{3}]",
                    method,
                    redact_sas_tokens_in_urls(url),
                    textutil.str_to_encoded_ustr(payload),
@@ -386,7 +386,7 @@ def http_request(method, # pylint: disable=R0913,R0912,R0914,W0102
             # -- Otherwise, use the retry_delay (fixed) with maximum of max_retry retries for the rest of the requests.
             delay = THROTTLE_DELAY_IN_SECONDS if was_throttled else retry_delay
 
-            logger.verbose("[HTTP Retry] "
+            logger.info("[PAULA] [HTTP Retry] "
                         "Attempt {0} of {1} will delay {2} seconds: {3}", 
                         attempt+1, 
                         max_retry, 
@@ -398,6 +398,8 @@ def http_request(method, # pylint: disable=R0913,R0912,R0914,W0102
         attempt += 1
 
         try:
+            import datetime
+            start_time = datetime.datetime.utcnow()
             resp = _http_request(method,
                                  host,
                                  rel_uri,
@@ -408,7 +410,10 @@ def http_request(method, # pylint: disable=R0913,R0912,R0914,W0102
                                  proxy_host=proxy_host,
                                  proxy_port=proxy_port,
                                  redact_data=redact_data)
-            logger.verbose("[HTTP Response] Status Code {0}", resp.status)
+            logger.info("[PAULA] [HTTP Response] Status Code {0}", resp.status)
+            from azurelinuxagent.common.event import elapsed_milliseconds
+            duration = elapsed_milliseconds(start_time)
+            logger.info("[PAULA] Time to get response: {0} s", float(duration) / 1000.0)
 
             if request_failed(resp):
                 if _is_retry_status(resp.status, retry_codes=retry_codes):
