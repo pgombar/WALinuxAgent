@@ -379,6 +379,10 @@ def http_request(method, # pylint: disable=R0913,R0912,R0914,W0102
     was_throttled = False
 
     while attempt < max_retry:
+
+        import datetime
+        start_time = datetime.datetime.utcnow()
+
         if attempt > 0:
             # Compute the request delay
             # -- Use a fixed delay if the server ever rate-throttles the request
@@ -398,8 +402,6 @@ def http_request(method, # pylint: disable=R0913,R0912,R0914,W0102
         attempt += 1
 
         try:
-            import datetime
-            start_time = datetime.datetime.utcnow()
             resp = _http_request(method,
                                  host,
                                  rel_uri,
@@ -441,6 +443,9 @@ def http_request(method, # pylint: disable=R0913,R0912,R0914,W0102
             return resp
 
         except httpclient.HTTPException as e: # pylint: disable=C0103
+            from azurelinuxagent.common.event import elapsed_milliseconds
+            duration = elapsed_milliseconds(start_time)
+            logger.info("[PAULA] Time to failure: {0} s", float(duration) / 1000.0)
             clean_url = redact_sas_tokens_in_urls(url)
             msg = '[HTTP Failed] {0} {1} -- HttpException {2}'.format(method, clean_url, e)
             if _is_retry_exception(e):
@@ -448,6 +453,9 @@ def http_request(method, # pylint: disable=R0913,R0912,R0914,W0102
             break
 
         except IOError as e: # pylint: disable=C0103
+            from azurelinuxagent.common.event import elapsed_milliseconds
+            duration = elapsed_milliseconds(start_time)
+            logger.info("[PAULA] Time to timeout: {0} s", float(duration) / 1000.0)
             IOErrorCounter.increment(host=host, port=port)
             clean_url = redact_sas_tokens_in_urls(url)
             msg = '[HTTP Failed] {0} {1} -- IOError {2}'.format(method, clean_url, e)
