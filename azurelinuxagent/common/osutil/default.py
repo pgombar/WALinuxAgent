@@ -684,9 +684,11 @@ class DefaultOSUtil(object): # pylint: disable=R0904
                 time.sleep(1)
         return False
 
-    def mount(self, device, mount_point, option=[], chk_err=True):
+    def mount(self, device, mount_point, option=None, chk_err=True):
         cmd = ["mount"]
-        cmd.extend(option + [device, mount_point])
+        if option:
+            cmd.extend(option)
+        cmd.extend([device, mount_point])
 
         try:
             output = shellutil.run_command(cmd, log_error=chk_err)
