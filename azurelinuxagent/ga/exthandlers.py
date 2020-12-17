@@ -46,6 +46,7 @@ from azurelinuxagent.common.exception import ExtensionDownloadError, ExtensionEr
 from azurelinuxagent.common.future import ustr
 from azurelinuxagent.common.protocol.restapi import ExtensionStatus, ExtensionSubStatus, ExtHandler, ExtHandlerStatus, \
     VMStatus
+from azurelinuxagent.common.utils import shellutil
 from azurelinuxagent.common.utils.flexible_version import FlexibleVersion
 from azurelinuxagent.common.version import AGENT_NAME, CURRENT_VERSION, DISTRO_NAME, DISTRO_VERSION, \
     GOAL_STATE_AGENT_VERSION, PY_VERSION_MAJOR, PY_VERSION_MICRO, PY_VERSION_MINOR
@@ -311,6 +312,8 @@ class ExtHandlersHandler(object):
 
             self.report_ext_handlers_status()
             self._cleanup_outdated_handlers()
+            self.restart_agent()
+
         except Exception as error:
             msg = u"Exception processing extension handlers: {0}".format(ustr(error))
             detailed_msg = '{0} {1}'.format(msg, traceback.extract_tb(get_traceback(error)))
@@ -321,6 +324,13 @@ class ExtHandlersHandler(object):
                       is_success=False,
                       message=detailed_msg)
             return
+
+    @staticmethod
+    def restart_agent():
+        if os.path.exists("/etc/systemd/system/azure.slice") and not CGroupConfigurator.get_instance().is_agent_in_azure_slice():
+            logger.warn("PAULA: RESTARTING AGENT NOW")
+            shellutil.run_command(["systemctl", "daemon-reload"])
+            shellutil.run_command(["systemctl", "restart", "walinuxagent"])
 
     @staticmethod
     def get_ext_handler_instance_from_path(name, path, protocol, skip_handlers=None):

@@ -25,6 +25,7 @@ from azurelinuxagent.common.cgroupapi import CGroupsApi, SystemdCgroupsApi
 from azurelinuxagent.common.cgroupstelemetry import CGroupsTelemetry
 from azurelinuxagent.common.exception import ExtensionErrorCodes, CGroupsException
 from azurelinuxagent.common.future import ustr
+from azurelinuxagent.common.utils import shellutil
 from azurelinuxagent.common.version import get_distro
 from azurelinuxagent.common.utils.extensionprocessutil import handle_process_completion
 from azurelinuxagent.common.event import add_event, WALAEventOperation
@@ -195,6 +196,11 @@ class CGroupConfigurator(object):
             # Both methods will log info on success, log warning and emit telemetry on failure.
             self.create_azure_cgroups_root()
             self.create_extension_cgroups_root()
+
+        @staticmethod
+        def is_agent_in_azure_slice():
+            output = shellutil.run_command(["systemctl", "status", "walinuxagent"])
+            return "CGroup: /azure.slice/walinuxagent.service" in output
 
         def _invoke_cgroup_operation(self, operation, error_message, on_error=None):
             """
