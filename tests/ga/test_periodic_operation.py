@@ -21,6 +21,35 @@ from tests.tools import AgentTestCase, patch, PropertyMock
 
 
 class TestPeriodicOperation(AgentTestCase):
+<<<<<<< HEAD
+=======
+    def test_it_should_take_a_timedelta_as_period(self):
+        def operation():
+            operation.run_time = datetime.datetime.utcnow()
+        operation.run_time = None
+
+        op = PeriodicOperation("test_operation", operation, period=datetime.timedelta(hours=1)) # pylint: disable=invalid-name
+        op.run()
+
+        expected = operation.run_time + datetime.timedelta(hours=1)
+        difference = op.next_run_time() - expected
+        self.assertTrue(difference < datetime.timedelta(seconds=1),
+            "The next run time exceeds the expected value by more than 1 second: {0} vs {1}".format(op.next_run_time(), expected))
+
+    def test_it_should_take_a_number_of_seconds_as_period(self):
+        def operation():
+            operation.run_time = datetime.datetime.utcnow()
+        operation.run_time = None
+
+        op = PeriodicOperation("test_operation", operation, period=3600) # pylint: disable=invalid-name
+        op.run()
+
+        expected = operation.run_time + datetime.timedelta(hours=1)
+        difference = op.next_run_time() - expected
+        self.assertTrue(difference < datetime.timedelta(seconds=1),
+            "The next run time exceeds the expected value by more than 1 second: {0} vs {1}".format(op.next_run_time(), expected))
+
+>>>>>>> release-2.2.53
     def test_it_should_be_invoked_when_run_is_called_first_time(self):
         def operation():
             operation.invoked = True
@@ -76,7 +105,11 @@ class TestPeriodicOperation(AgentTestCase):
 
         self.assertEqual(self._get_number_of_warnings(warn_patcher), 1, "The error in the operation was should have been reported exactly once")
 
+<<<<<<< HEAD
     def test_it_should_not_multiple_warnings_when_the_period_has_elapsed(self):
+=======
+    def test_it_should_not_log_multiple_warnings_when_the_period_has_elapsed(self):
+>>>>>>> release-2.2.53
         with patch("azurelinuxagent.common.logger.warn") as warn_patcher:
             with patch("azurelinuxagent.ga.periodic_operation.PeriodicOperation._LOG_WARNING_PERIOD", new_callable=PropertyMock, return_value=datetime.timedelta(milliseconds=1)):
                 pop = PeriodicOperation("test_operation", self._operation_with_failure, period=datetime.timedelta(milliseconds=1))
@@ -90,7 +123,11 @@ class TestPeriodicOperation(AgentTestCase):
         with patch("azurelinuxagent.common.logger.warn") as warn_patcher:
             for i in range(2):
                 def operation():
+<<<<<<< HEAD
                     raise Exception("WARNING {0}".format(i))
+=======
+                    raise Exception("WARNING {0}".format(i)) # pylint: disable=cell-var-from-loop
+>>>>>>> release-2.2.53
 
                 pop = PeriodicOperation("test_operation", operation, period=datetime.timedelta(hours=1))
                 for _ in range(5):
@@ -98,3 +135,27 @@ class TestPeriodicOperation(AgentTestCase):
 
             self.assertEqual(self._get_number_of_warnings(warn_patcher, "WARNING 0"), 1, "The first error should have been reported exactly 1 time")
             self.assertEqual(self._get_number_of_warnings(warn_patcher, "WARNING 1"), 1, "The second error should have been reported exactly 1 time")
+<<<<<<< HEAD
+=======
+
+    def test_sleep_until_next_operation_should_wait_for_the_closest_operation(self):
+        operations = [
+            PeriodicOperation("one", lambda: None, period=datetime.timedelta(seconds=60)),
+            PeriodicOperation("one", lambda: None, period=datetime.timedelta(hours=1)),
+            PeriodicOperation("one", lambda: None, period=datetime.timedelta(seconds=10)),  # closest operation
+            PeriodicOperation("one", lambda: None, period=datetime.timedelta(minutes=11)),
+            PeriodicOperation("one", lambda: None, period=datetime.timedelta(days=1))
+        ]
+        for op in operations: # pylint: disable=invalid-name
+            op.run()
+
+        def mock_sleep(seconds):
+            mock_sleep.seconds = seconds
+        mock_sleep.seconds = 0
+
+        with patch("azurelinuxagent.ga.periodic_operation.time.sleep", side_effect=mock_sleep):
+            PeriodicOperation.sleep_until_next_operation(operations)
+            self.assertAlmostEqual(mock_sleep.seconds, 10, 0, "did not sleep for the expected time")
+
+
+>>>>>>> release-2.2.53

@@ -3,7 +3,7 @@
 ## Develop branch status
 
 [![Travis CI](https://travis-ci.org/Azure/WALinuxAgent.svg?branch=develop)](https://travis-ci.org/Azure/WALinuxAgent/branches)
-[![CodeCov](https://codecov.io/gh/Azure/WALinusAgent/branch/develop/graph/badge.svg)](https://codecov.io/gh/Azure/WALinuxAgent/branch/develop)
+[![CodeCov](https://codecov.io/gh/Azure/WALinuxAgent/branch/develop/graph/badge.svg)](https://codecov.io/gh/Azure/WALinuxAgent/branch/develop)
 
 Each badge below represents our basic validation tests for an image, which are executed several times each day. These include provisioning, user account, disk, extension and networking scenarios.
 
@@ -47,7 +47,6 @@ functionality for Linux IaaS deployments:
 
 * Kernel
   * Configure virtual NUMA (disable for kernel <2.6.37)
-  * Consume Hyper-V entropy for /dev/random
   * Configure SCSI timeouts for the root device (which could be remote)
 
 * Diagnostics
@@ -83,7 +82,7 @@ authentication.
 
 The following systems have been tested and are known to work with the Azure
 Linux Agent.  Please note that this list may differ from the official list
-of supported systems on the Microsoft Azure Platform as described [here](http://support.microsoft.com/kb/2805216).
+of supported systems on the Microsoft Azure Platform as described [here](https://docs.microsoft.com/en-us/azure/virtual-machines/linux/endorsed-distros).
 
 Waagent depends on some system packages in order to function properly:
 
@@ -105,6 +104,12 @@ For more advanced installation options, such as installing to custom locations o
 
 ```bash
     sudo python setup.py install --register-service
+```
+
+For Python 3, use:
+
+```bash
+    sudo python3 setup.py install --register-service
 ```
 
 You can view more installation options by running:
@@ -175,6 +180,8 @@ For CoreOS, use:
 
 `-start`: Run waagent as a background process
 
+`-collect-logs [-full]`: Runs the log collector utility that collects relevant agent logs for debugging and stores them in the agent folder on disk. Exact location will be shown when run. Use flag `-full` for more exhaustive log collection. 
+
 ## Configuration
 
 A configuration file (/etc/waagent.conf) controls the actions of waagent. Blank lines and lines whose first character is a `#` are ignored (end-of-line comments are *not* supported).
@@ -183,6 +190,8 @@ A sample configuration file is shown below:
 
 ```yml
 Extensions.Enabled=y
+Extensions.GoalStatePeriod=6
+Extensions.GoalStateHistoryCleanupPeriod=86400
 Provisioning.Agent=auto
 Provisioning.DeleteRootPassword=n
 Provisioning.RegenerateSshHostKeyPair=y
@@ -200,6 +209,8 @@ ResourceDisk.EnableSwap=n
 ResourceDisk.EnableSwapEncryption=n
 ResourceDisk.SwapSizeMB=0
 Logs.Verbose=n
+Logs.Collect=n
+Logs.CollectPeriod=3600
 OS.AllowHTTP=n
 OS.RootDeviceScsiTimeout=300
 OS.EnableFIPS=n
@@ -236,6 +247,41 @@ without the agent. In order to do that, the `provisionVMAgent` flag must be set 
 provisioning time, via whichever API is being used. We will provide more details on
 this on our wiki when it is generally available. 
 
+#### __Extensions.GoalStatePeriod__
+
+_Type: Integer_  
+_Default: 6_
+
+How often to poll for new goal states (in seconds) and report the status of the VM
+and extensions. Goal states describe the desired state of the extensions on the VM.
+
+_Note_: setting up this parameter to more than a few minutes can make the state of
+the VM be reported as unresponsive/unavailable on the Azure portal. Also, this 
+setting affects how fast the agent starts executing extensions. 
+
+#### __Extensions.GoalStateHistoryCleanupPeriod__
+
+_Type: Integer_  
+_Default: 86400 (24 hours)_
+
+How often to clean up the history folder of the agent. The agent keeps past goal
+states on this folder, each goal state represented with a set of small files. The
+history is useful to debug issues in the agent or extensions.
+ 
+#### __AutoUpdate.Enabled__
+
+_Type: Boolean_  
+_Default: y_
+
+Enables auto-update of the Extension Handler. The Extension Handler is responsible 
+for managing extensions and reporting VM status. The core functionality of the agent
+is contained in the Extension Handler, and we encourage users to enable this option 
+in order to maintain an up to date version.
+
+On most distros the default value is 'y'.
+
+For more information on the agent version, see our [FAQ](https://github.com/Azure/WALinuxAgent/wiki/FAQ#what-does-goal-state-agent-mean-in-waagent---version-output).
+
 #### __Provisioning.Agent__
 
 _Type: String_
@@ -259,7 +305,22 @@ _Note_: This configuration option has been removed and has no effect. waagent
 now auto-detects cloud-init as a provisioning agent (with an option to override
 with `Provisioning.Agent`).
 
-#### __Provisioning.UseCloudInit__ (*removed in 2.2.45*)
+#### __Provisioning.MonitorHostName__
+
+_Type: Boolean_ 
+_Default: n_
+
+Monitor host name changes and publish changes via DHCP requests.
+
+#### __Provisioning.MonitorHostNamePeriod__
+
+_Type: Integer_ 
+_Default: 30_
+
+How often to monitor host name changes (in seconds). This setting is ignored if
+MonitorHostName is not set.
+
+#### __Provisioning.UseCloudInit__
 
 _Type: Boolean_ 
 _Default: n_
@@ -412,6 +473,23 @@ _Default: n_
 If set, log verbosity is boosted. Waagent logs to /var/log/waagent.log and
 leverages the system logrotate functionality to rotate logs.
 
+
+#### __Logs.Collect__
+
+_Type: Boolean_  
+_Default: n_
+
+If set, agent logs will be periodically collected and uploaded to a secure location for improved supportability.
+
+#### __Logs.CollectPeriod__
+
+_Type: Integer_  
+_Default: 3600_
+
+This configures how frequently to collect and upload logs. Default is each hour.
+
+NOTE: This only takes effect if the Logs.Collect option is enabled.
+
 #### __OS.AllowHTTP__
 
 _Type: Boolean_  
@@ -440,6 +518,14 @@ OpenSSL commands. This signals OpenSSL to use any installed FIPS-compliant libra
 Note that the agent itself has no FIPS-specific code. _If no FIPS-compliant certificates are
 installed, then enabling this option will cause all OpenSSL commands to fail._
 
+#### __OS.MonitorDhcpClientRestartPeriod__
+
+_Type: Integer_
+_Default: 30_
+
+The agent monitor restarts of the DHCP client and restores network rules when it happens. This
+setting determines how often (in seconds) to monitor for restarts.
+
 #### __OS.RootDeviceScsiTimeout__
 
 _Type: Integer_  
@@ -448,6 +534,14 @@ _Default: 300_
 This configures the SCSI timeout in seconds on the root device. If not set, the
 system defaults are used.
 
+#### __OS.RootDeviceScsiTimeoutPeriod__
+
+_Type: Integer_  
+_Default: 30_
+
+How often to set the SCSI timeout on the root device (in seconds). This setting is
+ignored if RootDeviceScsiTimeout is not set.
+
 #### __OS.OpensslPath__
 
 _Type: String_  
@@ -455,6 +549,13 @@ _Default: None_
 
 This can be used to specify an alternate path for the openssl binary to use for
 cryptographic operations.
+
+#### __OS.RemovePersistentNetRulesPeriod__
+_Type: Integer_  
+_Default: 30_
+
+How often to remove the udev rules for persistent network interface names (75-persistent-net-generator.rules
+and /etc/udev/rules.d/70-persistent-net.rules) (in seconds) 
 
 #### __OS.SshClientAliveInterval__
 
